@@ -98,6 +98,8 @@ public class UserLogin {
         TextField newRole = new TextField();
         TextField newFirst = new TextField();
         TextField newLast = new TextField();
+        TextField newEmail = new TextField();     // new email field
+        TextField newPhone = new TextField();     // new phone field
         Label status = new Label();
 
         newUsername.setPromptText("username");
@@ -105,9 +107,12 @@ public class UserLogin {
         newRole.setPromptText("role");
         newFirst.setPromptText("first name");
         newLast.setPromptText("last name");
+        newEmail.setPromptText("email");
+        newPhone.setPromptText("phone number");
 
         Button createBtn = new Button("Create Account");
         Button backToLogin = new Button("Back to Login");
+
 
         createBtn.setOnAction(e -> {
             String u = newUsername.getText().trim();
@@ -115,6 +120,8 @@ public class UserLogin {
             String r = newRole.getText().trim();
             String fn = newFirst.getText().trim();
             String ln = newLast.getText().trim();
+            String em = newEmail.getText().trim();       // <-- new email field
+            String ph = newPhone.getText().trim();       // <-- new phone field
 
             if (u.isEmpty() || p.isEmpty()) {
                 status.setText("Username and password required.");
@@ -124,7 +131,7 @@ public class UserLogin {
             String salt = SecurityUtils.generateSalt();
             String hashedPassword = SecurityUtils.hashPassword(p, salt);
 
-            String sql = "INSERT INTO users (username, password, salt, role, firstname, lastname) VALUES (?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO users (username, password, salt, role, firstname, lastname, email, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             try (Connection conn = DBUtils.establishConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -134,14 +141,19 @@ public class UserLogin {
                 pstmt.setString(4, r);
                 pstmt.setString(5, fn);
                 pstmt.setString(6, ln);
+                pstmt.setString(7, em); // new email
+                pstmt.setString(8, ph); // new phone
 
+                // ✅ Here is where you show registration success
                 int rows = pstmt.executeUpdate();
                 if (rows > 0) {
-                    status.setText("User created successfully!");
-                    stage.setScene(loginScene);
+                    // Show success message in login scene instead of sign-up scene
+                    loginMessage.setText("User successfully registered!");
+                    stage.setScene(loginScene); // redirect to login
                 } else {
                     status.setText("Failed to create user.");
                 }
+
 
             } catch (java.sql.SQLIntegrityConstraintViolationException e2) {
                 status.setText("Username already exists.");
@@ -150,6 +162,11 @@ public class UserLogin {
                 status.setText("Database error. Check console.");
             }
         });
+
+
+
+
+
 
         backToLogin.setOnAction(e -> stage.setScene(loginScene));
 
@@ -160,11 +177,13 @@ public class UserLogin {
                 new Label("Role:"), newRole,
                 new Label("First Name:"), newFirst,
                 new Label("Last Name:"), newLast,
+                new Label("Email:"), newEmail,
+                new Label("Phone:"), newPhone,
                 createBtn, backToLogin, status
         );
         layout.setPadding(new Insets(12));
 
-        signUpScene = new Scene(layout, 380, 480);
+        signUpScene = new Scene(layout, 400, 500);
         stage.setScene(signUpScene);
         stage.setTitle("Sign Up");
         stage.show();
