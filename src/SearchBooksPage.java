@@ -26,34 +26,37 @@ public class SearchBooksPage {
         title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold;");
 
         TextField searchField = new TextField();
-        searchField.setPromptText("Enter title, author, or ISBN");
+        searchField.setPromptText("Enter title, author, or category");
 
         Button searchBtn = new Button("Search");
         Button backBtn = new Button("Back");
 
-        TableView<BookTable> table = new TableView<>();
-        TableColumn<BookTable, String> col1 = new TableColumn<>("Title");
-        col1.setCellValueFactory(c -> c.getValue().titleProperty());
+        TableView<Book> table = new TableView<>();
 
-        TableColumn<BookTable, String> col2 = new TableColumn<>("Author");
-        col2.setCellValueFactory(c -> c.getValue().authorProperty());
+        TableColumn<Book, Number> colId = new TableColumn<>("ID");
+        colId.setCellValueFactory(c -> c.getValue().quantityProperty());
 
-        TableColumn<BookTable, String> col3 = new TableColumn<>("ISBN");
-        col3.setCellValueFactory(c -> c.getValue().isbnProperty());
+        TableColumn<Book, String> colTitle = new TableColumn<>("Title");
+        colTitle.setCellValueFactory(c -> c.getValue().titleProperty());
 
-        TableColumn<BookTable, String> col4 = new TableColumn<>("Available");
-        col4.setCellValueFactory(c -> c.getValue().availableProperty());
+        TableColumn<Book, String> colAuthor = new TableColumn<>("Author");
+        colAuthor.setCellValueFactory(c -> c.getValue().authorProperty());
 
-        table.getColumns().addAll(col1, col2, col3, col4);
+        TableColumn<Book, String> colCategory = new TableColumn<>("Category");
+        colCategory.setCellValueFactory(c -> c.getValue().categoryProperty());
 
-        // SEARCH ACTION
+        TableColumn<Book, Number> colQuantity = new TableColumn<>("Quantity");
+        colQuantity.setCellValueFactory(c -> c.getValue().quantityProperty());
+
+        table.getColumns().addAll(colTitle, colAuthor, colCategory, colQuantity);
+
+        // --- SEARCH ACTION ---
         searchBtn.setOnAction(e -> {
             String keyword = "%" + searchField.getText().trim() + "%";
-
             table.getItems().clear();
 
-            String sql = "SELECT title, author, isbn, isAvailable FROM books " +
-                    "WHERE title LIKE ? OR author LIKE ? OR isbn LIKE ?";
+            String sql = "SELECT book_id, title, author, category, quantity FROM books " +
+                    "WHERE title LIKE ? OR author LIKE ? OR category LIKE ?";
 
             try (Connection conn = DBUtils.establishConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -65,11 +68,12 @@ public class SearchBooksPage {
                 ResultSet rs = pstmt.executeQuery();
                 while (rs.next()) {
                     table.getItems().add(
-                            new BookTable(
+                            new Book(
+                                    rs.getInt("book_id"),
                                     rs.getString("title"),
                                     rs.getString("author"),
-                                    rs.getString("isbn"),
-                                    rs.getBoolean("isAvailable") ? "Yes" : "No"
+                                    rs.getString("category"),
+                                    rs.getInt("quantity")
                             )
                     );
                 }
@@ -79,10 +83,10 @@ public class SearchBooksPage {
             }
         });
 
-        // BACK BUTTON (Returns to user dashboard)
+        // Back → go back to dashboard
         backBtn.setOnAction(e -> {
-            UserDashboard user = new UserDashboard(stage, "User");
-            user.show();
+            UserDashboard ud = new UserDashboard(stage, "User");
+            ud.show();
         });
 
         HBox topBox = new HBox(10, searchField, searchBtn, backBtn);

@@ -47,6 +47,10 @@ public class AdminDashboard {
 
         stage.setScene(new Scene(root, 600, 400));
         stage.setTitle("Library - Admin Dashboard");
+        manageBooks.setOnAction(e -> {
+            ManageBooksPage mb = new ManageBooksPage(stage);
+            mb.show();
+        });
         stage.show();
     }
 }
