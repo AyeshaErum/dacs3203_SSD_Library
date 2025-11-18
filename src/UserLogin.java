@@ -95,7 +95,7 @@ public class UserLogin {
     private void showSignUpScene() {
         TextField newUsername = new TextField();
         PasswordField newPassword = new PasswordField();
-        TextField newRole = new TextField();
+       // TextField newRole = new TextField();
         TextField newFirst = new TextField();
         TextField newLast = new TextField();
         TextField newEmail = new TextField();     // new email field
@@ -104,7 +104,7 @@ public class UserLogin {
 
         newUsername.setPromptText("username");
         newPassword.setPromptText("password");
-        newRole.setPromptText("role");
+        // newRole.setPromptText("role");
         newFirst.setPromptText("first name");
         newLast.setPromptText("last name");
         newEmail.setPromptText("email");
@@ -117,7 +117,8 @@ public class UserLogin {
         createBtn.setOnAction(e -> {
             String u = newUsername.getText().trim();
             String p = newPassword.getText();
-            String r = newRole.getText().trim();
+            //String r = newRole.getText().trim();
+            String r = "user";   // automatically assign normal user role
             String fn = newFirst.getText().trim();
             String ln = newLast.getText().trim();
             String em = newEmail.getText().trim();       // <-- new email field
@@ -174,7 +175,7 @@ public class UserLogin {
                 new Label("Create new user"),
                 new Label("Username:"), newUsername,
                 new Label("Password:"), newPassword,
-                new Label("Role:"), newRole,
+                //new Label("Role:"), newRole,
                 new Label("First Name:"), newFirst,
                 new Label("Last Name:"), newLast,
                 new Label("Email:"), newEmail,
