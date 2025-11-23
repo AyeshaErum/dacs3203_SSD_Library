@@ -19,7 +19,7 @@ public class UserLogin {
     private PasswordField passwordField = new PasswordField();
     private Label loginMessage = new Label();
 
-    public UserLogin() {}
+
 
     public static boolean isValidUsername(String username) {
         return username.matches("^[a-z-_]{2,10}$");
@@ -210,8 +210,13 @@ public class UserLogin {
                 }
 
             } catch (java.sql.SQLIntegrityConstraintViolationException exDup) {
-                status.setText("Username already exists.");
-            } catch (Exception ex) {
+                if (exDup.getMessage().toLowerCase().contains("duplicate")) {
+                    status.setText("Username already exists.");
+                } else {
+                    status.setText("Database constraint error.");
+                }
+            }
+            catch (Exception ex) {
                 ex.printStackTrace();
                 status.setText("Database error. Check console.");
             }

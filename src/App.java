@@ -13,5 +13,3 @@ public class App extends Application {
         launch(args);
     }
 }
-// username: a  password: a
-// username: yes  password: no
