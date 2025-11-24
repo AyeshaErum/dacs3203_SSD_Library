@@ -51,6 +51,11 @@ public class AdminDashboard {
             ManageBooksPage mb = new ManageBooksPage(stage);
             mb.show();
         });
+
+        manageUsers.setOnAction(e -> {
+            new ManageUsersPage(stage).show();
+        });
+
         stage.show();
     }
 }

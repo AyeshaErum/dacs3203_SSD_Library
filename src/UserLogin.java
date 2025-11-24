@@ -187,6 +187,8 @@ public class UserLogin {
             String salt = SecurityUtils.generateSalt();
             String hashedPassword = SecurityUtils.hashPassword(p, salt);
 
+
+
             String sql = "INSERT INTO users (username, password, salt, role, firstname, lastname, email, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
             try (Connection conn = DBUtils.establishConnection();
