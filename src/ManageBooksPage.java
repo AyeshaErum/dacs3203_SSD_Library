@@ -155,6 +155,18 @@ public class ManageBooksPage {
             return;
         }
 
+        int quantity;
+        try {
+            quantity = Integer.parseInt(qty.getText());
+            if (quantity < 0) {
+                showAlert("Quantity cannot be negative!");
+                return;
+            }
+        } catch (NumberFormatException ex) {
+            showAlert("Quantity must be a number.");
+            return;
+        }
+
         String sql = "INSERT INTO books (title, author, category, quantity) VALUES (?,?,?,?)";
 
         try (Connection conn = DBUtils.establishConnection();
@@ -191,7 +203,19 @@ public class ManageBooksPage {
             ps.setString(1, title.getText());
             ps.setString(2, author.getText());
             ps.setString(3, category.getText());
-            ps.setInt(4, Integer.parseInt(qty.getText()));
+            int quantity;
+            try {
+                quantity = Integer.parseInt(qty.getText());
+                if (quantity < 0) {
+                    showAlert("Quantity cannot be negative!");
+                    return;
+                }
+            } catch (NumberFormatException ex) {
+                showAlert("Quantity must be a number.");
+                return;
+            }
+
+            ps.setInt(4, quantity);
             ps.setInt(5, selected.getId());
 
             ps.executeUpdate();
