@@ -56,6 +56,13 @@ public class AdminDashboard {
             new ManageUsersPage(stage).show();
         });
 
+        viewReports.setOnAction(e -> {
+            ViewReportsPage vr = new ViewReportsPage(stage);
+            vr.show();
+        });
+
+
+
         stage.show();
     }
 }

@@ -69,6 +69,21 @@ public class UserLogin {
         stage.show();
     }
 
+    private void logLogin(String username) {
+        String sql = "INSERT INTO login_logs (username) VALUES (?)";
+
+        try (Connection conn = DBUtils.establishConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, username);
+            pst.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
     // Authenticate user (salted hash)
     private void authenticate() {
         String username = usernameField.getText().trim();
@@ -96,6 +111,7 @@ public class UserLogin {
 
                 if (enteredHash.equals(storedHash)) {
 
+                    logLogin(username);
                     // Login success → go to dashboard
                     if (role.equals("admin")) {
                         AdminDashboard admin = new AdminDashboard(stage, username);
