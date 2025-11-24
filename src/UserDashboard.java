@@ -23,7 +23,15 @@ public class UserDashboard {
 
         Button searchBooks = new Button("Search Books");
         Button borrowBooks = new Button("Borrow / Return Books");
+        Button changePassword = new Button("Change Password");
         Button logout = new Button("Logout");
+
+
+
+        changePassword.setOnAction(e -> {
+            UserChangePassword cp = new UserChangePassword(stage, username);
+            cp.initializeComponents();
+        });
 
         // Logout → go back to Login screen
         logout.setOnAction(e -> {
@@ -37,7 +45,7 @@ public class UserDashboard {
             sb.show();
         });
 
-        VBox vbox = new VBox(15, title, searchBooks, borrowBooks, logout);
+        VBox vbox = new VBox(15, title, searchBooks, borrowBooks,changePassword, logout);
         vbox.setPadding(new Insets(20));
 
         root.setCenter(vbox);

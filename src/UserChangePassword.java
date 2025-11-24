@@ -9,6 +9,7 @@ import javafx.stage.Stage;
 public class UserChangePassword {
     private Scene changePasswordScene;
     private PasswordField newPasswordField = new PasswordField();
+    private PasswordField confirmPasswordField = new PasswordField();
     private Stage stage;
     private String username;
 
@@ -18,62 +19,96 @@ public class UserChangePassword {
     }
 
     public void initializeComponents() {
-        VBox layout = new VBox(10);
-        layout.setPadding(new Insets(10));
+        VBox layout = new VBox(12);
+        layout.setPadding(new Insets(12));
 
-        Button changePasswordButton = new Button("Change Password");
-        changePasswordButton.setOnAction(e -> changePassword());
+        Label welcome = new Label("Change Password for: " + username);
+        welcome.setStyle("-fx-font-size: 16px; -fx-font-weight:bold;");
+
+        newPasswordField.setPromptText("Enter new password");
+        confirmPasswordField.setPromptText("Confirm new password");
+
+        Button updateButton = new Button("Update Password");
+        Button backButton = new Button("Back to Dashboard");
+
+        updateButton.setOnAction(e -> changePassword());
+        backButton.setOnAction(e -> goBackToDashboard());
 
         layout.getChildren().addAll(
-                new Label("Welcome " + username),
+                welcome,
                 new Label("New Password:"), newPasswordField,
-                changePasswordButton
+                new Label("Confirm Password:"), confirmPasswordField,
+                updateButton,
+                backButton
         );
 
-        changePasswordScene = new Scene(layout, 300, 200);
+        changePasswordScene = new Scene(layout, 350, 260);
         stage.setTitle("Change Password");
         stage.setScene(changePasswordScene);
         stage.show();
     }
 
-    // Update password with new hash + salt
     private void changePassword() {
-        String newPassword = newPasswordField.getText().trim();
-        if (newPassword.isEmpty()) {
-            showAlert("Error", "Please enter a new password.");
+        String pass = newPasswordField.getText().trim();
+        String confirm = confirmPasswordField.getText().trim();
+
+        // 1. Check empty
+        if (pass.isEmpty() || confirm.isEmpty()) {
+            showAlert("Error", "Please fill all fields.");
             return;
         }
 
+        // 2. Check match
+        if (!pass.equals(confirm)) {
+            showAlert("Error", "Passwords do not match.");
+            return;
+        }
+
+        // 3. Check password rules (same as signup)
+        if (!UserLogin.isValidPassword(pass)) {
+            showAlert("Error",
+                    "Password must be 8+ characters and include BOTH letters and numbers.");
+            return;
+        }
+
+        // 4. Generate new salt + hashed password
         String newSalt = SecurityUtils.generateSalt();
-        String newHashedPassword = SecurityUtils.hashPassword(newPassword, newSalt);
+        String newHashed = SecurityUtils.hashPassword(pass, newSalt);
 
         String sql = "UPDATE users SET password = ?, salt = ? WHERE username = ?";
 
         try (Connection con = DBUtils.establishConnection();
-             PreparedStatement pstmt = con.prepareStatement(sql)) {
+             PreparedStatement pst = con.prepareStatement(sql)) {
 
-            pstmt.setString(1, newHashedPassword);
-            pstmt.setString(2, newSalt);
-            pstmt.setString(3, username);
+            pst.setString(1, newHashed);
+            pst.setString(2, newSalt);
+            pst.setString(3, username);
 
-            int result = pstmt.executeUpdate();
+            int result = pst.executeUpdate();
+
             if (result == 1) {
-                showAlert("Success", "Password successfully changed!");
+                showAlert("Success", "Password changed successfully!");
+                goBackToDashboard();
             } else {
-                showAlert("Failure", "Failed to update password.");
+                showAlert("Error", "Could not update password.");
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Database Error", "Failed to connect to the database.");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showAlert("Database Error", "Failed to update password in database.");
         }
     }
 
-    private void showAlert(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        alert.showAndWait();
+    private void goBackToDashboard() {
+        UserDashboard ud = new UserDashboard(stage, username);
+        ud.show();
+    }
+
+    private void showAlert(String title, String msg) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(msg);
+        a.showAndWait();
     }
 }
