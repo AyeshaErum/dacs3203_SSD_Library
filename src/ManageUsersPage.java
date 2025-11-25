@@ -53,7 +53,42 @@ public class ManageUsersPage {
         TableColumn<UserTable, String> colPhone = new TableColumn<>("Phone");
         colPhone.setCellValueFactory(c -> c.getValue().phoneProperty());
 
-        table.getColumns().addAll(colUsername, colFirst, colLast, colRole, colEmail, colPhone);
+        TableColumn<UserTable, String> colStatus = new TableColumn<>("Status");
+
+        colStatus.setCellValueFactory(c -> c.getValue().statusProperty());
+
+// ComboBox cell
+        colStatus.setCellFactory(column -> new TableCell<UserTable, String>() {
+            private final ComboBox<String> combo = new ComboBox<>();
+
+            {
+                combo.getItems().addAll("active", "inactive", "blocked");
+
+                combo.setOnAction(e -> {
+                    UserTable user = getTableView().getItems().get(getIndex());
+                    String newStatus = combo.getValue();
+
+                    updateStatusInDB(user.getUsername(), newStatus);
+                    user.statusProperty().set(newStatus);
+                });
+            }
+
+            @Override
+            protected void updateItem(String status, boolean empty) {
+                super.updateItem(status, empty);
+
+                if (empty) {
+                    setGraphic(null);
+                    return;
+                }
+
+                combo.setValue(status);
+                setGraphic(combo);
+            }
+        });
+
+
+        table.getColumns().addAll(colUsername, colFirst, colLast, colRole, colEmail, colPhone, colStatus);
         loadUsers();
 
         // Button Actions
@@ -81,7 +116,7 @@ public class ManageUsersPage {
     private void loadUsers() {
         table.getItems().clear();
 
-        String sql = "SELECT username, firstname, lastname, role, email, phone FROM users";
+        String sql = "SELECT username, firstname, lastname, role, email, phone, status FROM users";
 
         try (Connection conn = DBUtils.establishConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -94,7 +129,8 @@ public class ManageUsersPage {
                         rs.getString("lastname"),
                         rs.getString("role"),
                         rs.getString("email"),
-                        rs.getString("phone")
+                        rs.getString("phone"),
+                        rs.getString("status")
                 ));
             }
 
@@ -248,15 +284,17 @@ public class ManageUsersPage {
     // Inner class representing one user row
     public static class UserTable {
         private SimpleStringProperty username, firstname, lastname, role, email, phone;
+        private SimpleStringProperty status;
 
         public UserTable(String username, String firstname, String lastname, String role,
-                         String email, String phone) {
+                         String email, String phone, String status) {
             this.username = new SimpleStringProperty(username);
             this.firstname = new SimpleStringProperty(firstname);
             this.lastname = new SimpleStringProperty(lastname);
             this.role = new SimpleStringProperty(role);
             this.email = new SimpleStringProperty(email);
             this.phone = new SimpleStringProperty(phone);
+            this.status = new SimpleStringProperty(status);
         }
 
         public String getUsername() { return username.get(); }
@@ -267,5 +305,26 @@ public class ManageUsersPage {
         public SimpleStringProperty roleProperty() { return role; }
         public SimpleStringProperty emailProperty() { return email; }
         public SimpleStringProperty phoneProperty() { return phone; }
+        public SimpleStringProperty statusProperty() { return status; }
+        public String getStatus() { return status.get(); }
+
+
+
+
+    }
+    private void updateStatusInDB(String username, String newStatus) {
+        String sql = "UPDATE users SET status = ?, failed_attempts = 0 WHERE username = ?";
+
+        try (Connection conn = DBUtils.establishConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, newStatus);
+            stmt.setString(2, username);
+            stmt.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            alert("Failed to update status!");
+        }
     }
 }

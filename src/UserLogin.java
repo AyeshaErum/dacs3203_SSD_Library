@@ -94,7 +94,7 @@ public class UserLogin {
             return;
         }
 
-        String sql = "SELECT password, salt, role FROM users WHERE username = ?";
+        String sql = "SELECT password, salt, role, status, failed_attempts FROM users WHERE username = ?";
 
         try (Connection conn = DBUtils.establishConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -106,10 +106,23 @@ public class UserLogin {
                 String storedHash = rs.getString("password");
                 String storedSalt = rs.getString("salt");
                 String role = rs.getString("role");
+                String status = rs.getString("status");
+                int attempts = rs.getInt("failed_attempts");
+
+                if (status.equals("blocked")) {
+                    loginMessage.setText("Your account is blocked. Contact admin.");
+                    return;
+                }
 
                 String enteredHash = SecurityUtils.hashPassword(password, storedSalt);
 
                 if (enteredHash.equals(storedHash)) {
+
+
+                    String resetSql = "UPDATE users SET failed_attempts = 0 WHERE username = ?";
+                    PreparedStatement pstReset = conn.prepareStatement(resetSql);
+                    pstReset.setString(1, username);
+                    pstReset.executeUpdate();
 
                     logLogin(username);
                     // Login success → go to dashboard
@@ -121,11 +134,32 @@ public class UserLogin {
                         user.show();
                     }
 
-                } else {
+                }
+
+
+                else {
+                    String failSql = "UPDATE users SET failed_attempts = failed_attempts + 1 WHERE username = ?";
+                    PreparedStatement pstFail = conn.prepareStatement(failSql);
+                    pstFail.setString(1, username);
+                    pstFail.executeUpdate();
+
+                    // 🔥 STEP 3 — Block if attempts ≥ 5
+                    if (attempts + 1 >= 5) {
+                        String blockSql = "UPDATE users SET status = 'blocked' WHERE username = ?";
+                        PreparedStatement pstBlock = conn.prepareStatement(blockSql);
+                        pstBlock.setString(1, username);
+                        pstBlock.executeUpdate();
+
+                        loginMessage.setText("Too many failed attempts. Your account is now blocked.");
+                        return;
+                    }
+
                     loginMessage.setText("Invalid username or password.");
                 }
 
             } else {
+
+
                 loginMessage.setText("Invalid username or password.");
             }
 
