@@ -45,6 +45,13 @@ public class UserDashboard {
             sb.show();
         });
 
+
+        borrowBooks.setOnAction(e -> {
+            BorrowReturnPage br = new BorrowReturnPage(stage, username);
+            br.show();
+        });
+
+
         VBox vbox = new VBox(15, title, searchBooks, borrowBooks,changePassword, logout);
         vbox.setPadding(new Insets(20));
 

@@ -69,13 +69,14 @@ public class UserLogin {
         stage.show();
     }
 
-    private void logLogin(String username) {
-        String sql = "INSERT INTO login_logs (username) VALUES (?)";
+    private void logLogin(String username, boolean success) {
+        String sql = "INSERT INTO login_logs (username,success) VALUES (?)";
 
         try (Connection conn = DBUtils.establishConnection();
              PreparedStatement pst = conn.prepareStatement(sql)) {
 
             pst.setString(1, username);
+            pst.setBoolean(2, success);
             pst.executeUpdate();
 
         } catch (Exception e) {
@@ -107,60 +108,55 @@ public class UserLogin {
                 String storedSalt = rs.getString("salt");
                 String role = rs.getString("role");
                 String status = rs.getString("status");
-                int attempts = rs.getInt("failed_attempts");
+                int failedAttempts = rs.getInt("failed_attempts");
 
-                if (status.equals("blocked")) {
-                    loginMessage.setText("Your account is blocked. Contact admin.");
+                // 0) Check status
+                if ("blocked".equalsIgnoreCase(status)) {
+                    loginMessage.setText("Account is blocked due to too many failed attempts. Contact admin.");
+                    logLogin(username, false);
                     return;
                 }
 
                 String enteredHash = SecurityUtils.hashPassword(password, storedSalt);
 
                 if (enteredHash.equals(storedHash)) {
+                    // Success -> reset failed_attempts, log, go to dashboard
+                    try (PreparedStatement pstReset = conn.prepareStatement("UPDATE users SET failed_attempts = 0 WHERE username = ?")) {
+                        pstReset.setString(1, username);
+                        pstReset.executeUpdate();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
 
-
-                    String resetSql = "UPDATE users SET failed_attempts = 0 WHERE username = ?";
-                    PreparedStatement pstReset = conn.prepareStatement(resetSql);
-                    pstReset.setString(1, username);
-                    pstReset.executeUpdate();
-
-                    logLogin(username);
-                    // Login success → go to dashboard
-                    if (role.equals("admin")) {
-                        AdminDashboard admin = new AdminDashboard(stage, username);
-                        admin.show();
+                    logLogin(username, true);
+                    if ("admin".equalsIgnoreCase(role)) {
+                        new AdminDashboard(stage, username).show();
                     } else {
-                        UserDashboard user = new UserDashboard(stage, username);
-                        user.show();
+                        new UserDashboard(stage, username).show();
                     }
-
-                }
-
-
-                else {
-                    String failSql = "UPDATE users SET failed_attempts = failed_attempts + 1 WHERE username = ?";
-                    PreparedStatement pstFail = conn.prepareStatement(failSql);
-                    pstFail.setString(1, username);
-                    pstFail.executeUpdate();
-
-                    // 🔥 STEP 3 — Block if attempts ≥ 5
-                    if (attempts + 1 >= 5) {
-                        String blockSql = "UPDATE users SET status = 'blocked' WHERE username = ?";
-                        PreparedStatement pstBlock = conn.prepareStatement(blockSql);
-                        pstBlock.setString(1, username);
-                        pstBlock.executeUpdate();
-
-                        loginMessage.setText("Too many failed attempts. Your account is now blocked.");
-                        return;
+                } else {
+                    // Wrong password: increment and possibly block
+                    try (PreparedStatement pstFail = conn.prepareStatement("UPDATE users SET failed_attempts = failed_attempts + 1 WHERE username = ?")) {
+                        pstFail.setString(1, username);
+                        pstFail.executeUpdate();
                     }
-
-                    loginMessage.setText("Invalid username or password.");
+                    // re-read failed attempts (or compute)
+                    int newFailed = failedAttempts + 1;
+                    if (newFailed >= 5) {
+                        try (PreparedStatement pstBlock = conn.prepareStatement("UPDATE users SET status = 'blocked' WHERE username = ?")) {
+                            pstBlock.setString(1, username);
+                            pstBlock.executeUpdate();
+                        }
+                        loginMessage.setText("Too many failed attempts — your account is blocked. Contact admin.");
+                    } else {
+                        loginMessage.setText("Invalid username or password.");
+                    }
+                    logLogin(username, false);
                 }
 
             } else {
-
-
                 loginMessage.setText("Invalid username or password.");
+                logLogin(username, false);
             }
 
         } catch (Exception ex) {
