@@ -23,13 +23,20 @@ public class ViewReportsPage {
 
         TableView<LoginLog> table = new TableView<>();
 
+        // COLUMN 1 — Username
         TableColumn<LoginLog, String> colUser = new TableColumn<>("Username");
         colUser.setCellValueFactory(new PropertyValueFactory<>("username"));
 
+        // COLUMN 2 — Login Time
         TableColumn<LoginLog, String> colTime = new TableColumn<>("Login Time");
         colTime.setCellValueFactory(new PropertyValueFactory<>("loginTime"));
 
-        table.getColumns().addAll(colUser, colTime);
+        // ✅ NEW COLUMN 3 — SUCCESS STATUS (ADDED HERE)
+        TableColumn<LoginLog, String> colSuccess = new TableColumn<>("Success");
+        colSuccess.setCellValueFactory(new PropertyValueFactory<>("success"));
+
+        // Add all columns
+        table.getColumns().addAll(colUser, colTime, colSuccess);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         table.setItems(fetchLogs());
@@ -47,7 +54,8 @@ public class ViewReportsPage {
     private ObservableList<LoginLog> fetchLogs() {
         ObservableList<LoginLog> list = FXCollections.observableArrayList();
 
-        String sql = "SELECT username, login_time FROM login_logs ORDER BY login_time DESC";
+        // ✅ UPDATED QUERY — ADDED success COLUMN
+        String sql = "SELECT username, login_time, success FROM login_logs ORDER BY login_time DESC";
 
         try (Connection conn = DBUtils.establishConnection();
              PreparedStatement pst = conn.prepareStatement(sql);
@@ -56,7 +64,8 @@ public class ViewReportsPage {
             while (rs.next()) {
                 list.add(new LoginLog(
                         rs.getString("username"),
-                        rs.getString("login_time")
+                        rs.getString("login_time"),
+                        rs.getBoolean("success") ? "Success" : "Failed"   // <-- NEW
                 ));
             }
 
@@ -70,10 +79,13 @@ public class ViewReportsPage {
     public static class LoginLog {
         private String username;
         private String loginTime;
+        private String success;    // <-- NEW FIELD
 
-        public LoginLog(String username, String loginTime) {
+        // UPDATED CONSTRUCTOR
+        public LoginLog(String username, String loginTime, String success) {
             this.username = username;
             this.loginTime = loginTime;
+            this.success = success;
         }
 
         public String getUsername() {
@@ -82,6 +94,10 @@ public class ViewReportsPage {
 
         public String getLoginTime() {
             return loginTime;
+        }
+
+        public String getSuccess() {
+            return success;
         }
     }
 }

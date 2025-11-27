@@ -192,6 +192,25 @@ public class BorrowReturnPage {
             return;
         }
 
+        // --- LIMIT: user can borrow max 5 books ---
+        String countSql = "SELECT COUNT(*) FROM borrow_records WHERE username = ? AND status = 'borrowed'";
+
+        try (Connection conn = DBUtils.establishConnection();
+             PreparedStatement pst = conn.prepareStatement(countSql)) {
+
+            pst.setString(1, username);
+            ResultSet rs = pst.executeQuery();
+
+            if (rs.next() && rs.getInt(1) >= 5) {
+                showAlert("You have reached the maximum limit of 5 borrowed books.");
+                return;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            showAlert("Error checking borrow limit.");
+            return;
+        }
+
         // Check available quantity
         if (sel.getQuantity() <= 0) {
             showAlert("Selected book is not available.");
@@ -206,7 +225,6 @@ public class BorrowReturnPage {
         LocalDateTime due = now.plusDays(BORROW_DAYS);
 
         try (Connection conn = DBUtils.establishConnection()) {
-            // transaction style (two updates)
             conn.setAutoCommit(false);
             try (PreparedStatement pst = conn.prepareStatement(insertSql);
                  PreparedStatement pst2 = conn.prepareStatement(updateQtySql)) {
@@ -237,6 +255,7 @@ public class BorrowReturnPage {
         loadAvailableBooks();
         loadBorrowedBooks();
     }
+
 
     private void returnSelectedBorrow() {
         UserBorrowRow sel = borrowedTable.getSelectionModel().getSelectedItem();

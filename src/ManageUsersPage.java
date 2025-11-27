@@ -17,6 +17,9 @@ public class ManageUsersPage {
     private Stage stage;
     private TableView<UserTable> table;
 
+    // Borrow info table (correct model)
+    private TableView<UserBorrowInfo> borrowInfoTable = new TableView<>();
+
     public ManageUsersPage(Stage stage) {
         this.stage = stage;
     }
@@ -30,9 +33,10 @@ public class ManageUsersPage {
         // Buttons
         Button addUserBtn = new Button("Add User");
         Button deleteBtn = new Button("Delete User");
+        Button viewUserBtn = new Button("View Selected User");   // ✅ ADDED BUTTON
         Button backBtn = new Button("Back");
 
-        // TableView
+        // Main Users Table
         table = new TableView<>();
 
         TableColumn<UserTable, String> colUsername = new TableColumn<>("Username");
@@ -54,20 +58,17 @@ public class ManageUsersPage {
         colPhone.setCellValueFactory(c -> c.getValue().phoneProperty());
 
         TableColumn<UserTable, String> colStatus = new TableColumn<>("Status");
-
         colStatus.setCellValueFactory(c -> c.getValue().statusProperty());
 
-// ComboBox cell
+        // Status dropdown
         colStatus.setCellFactory(column -> new TableCell<UserTable, String>() {
             private final ComboBox<String> combo = new ComboBox<>();
 
             {
                 combo.getItems().addAll("active", "inactive", "blocked");
-
                 combo.setOnAction(e -> {
                     UserTable user = getTableView().getItems().get(getIndex());
                     String newStatus = combo.getValue();
-
                     updateStatusInDB(user.getUsername(), newStatus);
                     user.statusProperty().set(newStatus);
                 });
@@ -76,43 +77,65 @@ public class ManageUsersPage {
             @Override
             protected void updateItem(String status, boolean empty) {
                 super.updateItem(status, empty);
-
                 if (empty) {
                     setGraphic(null);
                     return;
                 }
-
                 combo.setValue(status);
                 setGraphic(combo);
             }
         });
 
-
         table.getColumns().addAll(colUsername, colFirst, colLast, colRole, colEmail, colPhone, colStatus);
         loadUsers();
 
-        // Button Actions
-        addUserBtn.setOnAction(e -> openAddUserForm());
-        deleteBtn.setOnAction(e -> deleteSelectedUser());
-
-        backBtn.setOnAction(e -> {
-            AdminDashboard admin = new AdminDashboard(stage, "Admin");
-            admin.show();
+        // View Selected User Button
+        viewUserBtn.setOnAction(e -> {
+            UserTable selected = table.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                alert("Please select a user first!");
+                return;
+            }
+            loadBorrowInfo(selected.getUsername());
         });
 
-        HBox topBtns = new HBox(10, addUserBtn, deleteBtn, backBtn);
+        // Borrow Info Table
+        TableColumn<UserBorrowInfo, String> bTitle = new TableColumn<>("Title");
+        bTitle.setCellValueFactory(c -> c.getValue().titleProperty());
+
+        TableColumn<UserBorrowInfo, String> bBorrow = new TableColumn<>("Borrowed On");
+        bBorrow.setCellValueFactory(c -> c.getValue().borrowDateProperty());
+
+        TableColumn<UserBorrowInfo, String> bDue = new TableColumn<>("Due Date");
+        bDue.setCellValueFactory(c -> c.getValue().dueDateProperty());
+
+        TableColumn<UserBorrowInfo, String> bStatus2 = new TableColumn<>("Status");
+        bStatus2.setCellValueFactory(c -> c.getValue().statusProperty());
+
+        TableColumn<UserBorrowInfo, String> bFine = new TableColumn<>("Fine");
+        bFine.setCellValueFactory(c -> c.getValue().fineProperty());
+
+        borrowInfoTable.getColumns().addAll(bTitle, bBorrow, bDue, bStatus2, bFine);
+
+        addUserBtn.setOnAction(e -> openAddUserForm());
+        deleteBtn.setOnAction(e -> deleteSelectedUser());
+        backBtn.setOnAction(e -> new AdminDashboard(stage, "Admin").show());
+
+        HBox topBtns = new HBox(10, addUserBtn, deleteBtn, viewUserBtn, backBtn);
         topBtns.setPadding(new Insets(10));
 
-        VBox vbox = new VBox(10, title, topBtns, table);
-        vbox.setPadding(new Insets(15));
+        VBox vbox = new VBox(10, title, topBtns, table,
+                new Label("Borrow & Return History for Selected User:"),
+                borrowInfoTable);
 
+        vbox.setPadding(new Insets(15));
         root.setCenter(vbox);
 
         stage.setScene(new Scene(root, 800, 500));
         stage.show();
     }
 
-    // Load users from DB
+    // Load Users
     private void loadUsers() {
         table.getItems().clear();
 
@@ -139,10 +162,8 @@ public class ManageUsersPage {
         }
     }
 
-    // Delete selected user
     private void deleteSelectedUser() {
         UserTable selected = table.getSelectionModel().getSelectedItem();
-
         if (selected == null) {
             alert("Please select a user to delete.");
             return;
@@ -164,7 +185,6 @@ public class ManageUsersPage {
         }
     }
 
-    // Add User form popup
     private void openAddUserForm() {
         Stage popup = new Stage();
         popup.setTitle("Add New User");
@@ -175,13 +195,12 @@ public class ManageUsersPage {
         grid.setPadding(new Insets(15));
 
         TextField username = new TextField();
+        PasswordField password = new PasswordField();
         TextField firstname = new TextField();
         TextField lastname = new TextField();
+        TextField role = new TextField();
         TextField email = new TextField();
         TextField phone = new TextField();
-        TextField role = new TextField();
-
-        PasswordField password = new PasswordField();
 
         grid.add(new Label("Username:"), 0, 0);
         grid.add(username, 1, 0);
@@ -208,46 +227,21 @@ public class ManageUsersPage {
 
         saveBtn.setOnAction(e -> {
 
-            // 1️⃣ Basic validation
-            if (username.getText().isEmpty() ||
-                    password.getText().isEmpty() ||
-                    firstname.getText().isEmpty() ||
-                    lastname.getText().isEmpty() ||
-                    role.getText().isEmpty() ||
-                    email.getText().isEmpty()) {
-
-                alert("Please fill all required fields.");
+            if (username.getText().isEmpty() || password.getText().isEmpty() ||
+                    firstname.getText().isEmpty() || lastname.getText().isEmpty() ||
+                    role.getText().isEmpty() || email.getText().isEmpty()) {
+                alert("Please fill all fields.");
                 return;
             }
 
-            // 2️⃣ Check if username already exists
-            String checkSQL = "SELECT COUNT(*) FROM users WHERE username = ?";
-
-            try (Connection conn = DBUtils.establishConnection();
-                 PreparedStatement checkStmt = conn.prepareStatement(checkSQL)) {
-
-                checkStmt.setString(1, username.getText());
-                ResultSet rs = checkStmt.executeQuery();
-
-                if (rs.next() && rs.getInt(1) > 0) {
-                    alert("Username already exists! Choose a different one.");
-                    return;
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-
-            // 3️⃣ If username is new → then insert
-            String salt = SecurityUtils.generateSalt();
-            String hashed = SecurityUtils.hashPassword(password.getText(), salt);
-
-
-
-            String sql = "INSERT INTO users (username, password, role, firstname, lastname, salt, email, phone) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO users (username, password, role, firstname, lastname, salt, email, phone) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
             try (Connection conn = DBUtils.establishConnection();
                  PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                String salt = SecurityUtils.generateSalt();
+                String hashed = SecurityUtils.hashPassword(password.getText(), salt);
 
                 stmt.setString(1, username.getText());
                 stmt.setString(2, hashed);
@@ -281,10 +275,9 @@ public class ManageUsersPage {
         a.show();
     }
 
-    // Inner class representing one user row
+    // User Table Model
     public static class UserTable {
-        private SimpleStringProperty username, firstname, lastname, role, email, phone;
-        private SimpleStringProperty status;
+        private SimpleStringProperty username, firstname, lastname, role, email, phone, status;
 
         public UserTable(String username, String firstname, String lastname, String role,
                          String email, String phone, String status) {
@@ -299,19 +292,14 @@ public class ManageUsersPage {
 
         public String getUsername() { return username.get(); }
         public SimpleStringProperty usernameProperty() { return username; }
-
         public SimpleStringProperty firstnameProperty() { return firstname; }
         public SimpleStringProperty lastnameProperty() { return lastname; }
         public SimpleStringProperty roleProperty() { return role; }
         public SimpleStringProperty emailProperty() { return email; }
         public SimpleStringProperty phoneProperty() { return phone; }
         public SimpleStringProperty statusProperty() { return status; }
-        public String getStatus() { return status.get(); }
-
-
-
-
     }
+
     private void updateStatusInDB(String username, String newStatus) {
         String sql = "UPDATE users SET status = ?, failed_attempts = 0 WHERE username = ?";
 
@@ -326,5 +314,54 @@ public class ManageUsersPage {
             e.printStackTrace();
             alert("Failed to update status!");
         }
+    }
+
+    private void loadBorrowInfo(String username) {
+        borrowInfoTable.getItems().clear();
+
+        String sql = "SELECT b.title, br.borrow_date, br.due_date, br.return_date, br.status, br.fine_amount "
+                + "FROM borrow_records br "
+                + "JOIN books b ON br.book_id = b.book_id "
+                + "WHERE br.username = ? ORDER BY br.borrow_date DESC";
+
+        try (Connection conn = DBUtils.establishConnection();
+             PreparedStatement pst = conn.prepareStatement(sql)) {
+
+            pst.setString(1, username);
+
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    borrowInfoTable.getItems().add(new UserBorrowInfo(
+                            rs.getString("title"),
+                            String.valueOf(rs.getTimestamp("borrow_date")),
+                            String.valueOf(rs.getTimestamp("due_date")),
+                            rs.getString("status"),
+                            String.format("%.2f", rs.getDouble("fine_amount"))
+                    ));
+                }
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    // Borrow Info Model
+    public static class UserBorrowInfo {
+        private SimpleStringProperty title, borrowDate, dueDate, status, fine;
+
+        public UserBorrowInfo(String title, String borrowDate, String dueDate, String status, String fine) {
+            this.title = new SimpleStringProperty(title);
+            this.borrowDate = new SimpleStringProperty(borrowDate);
+            this.dueDate = new SimpleStringProperty(dueDate);
+            this.status = new SimpleStringProperty(status);
+            this.fine = new SimpleStringProperty(fine);
+        }
+
+        public SimpleStringProperty titleProperty() { return title; }
+        public SimpleStringProperty borrowDateProperty() { return borrowDate; }
+        public SimpleStringProperty dueDateProperty() { return dueDate; }
+        public SimpleStringProperty statusProperty() { return status; }
+        public SimpleStringProperty fineProperty() { return fine; }
     }
 }

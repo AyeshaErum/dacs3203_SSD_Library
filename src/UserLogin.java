@@ -70,13 +70,14 @@ public class UserLogin {
     }
 
     private void logLogin(String username, boolean success) {
-        String sql = "INSERT INTO login_logs (username,success) VALUES (?)";
+        String sql = "INSERT INTO login_logs (username,success, source_ip) VALUES (?,?,?)";
 
         try (Connection conn = DBUtils.establishConnection();
              PreparedStatement pst = conn.prepareStatement(sql)) {
 
             pst.setString(1, username);
             pst.setBoolean(2, success);
+            pst.setString(3, null);
             pst.executeUpdate();
 
         } catch (Exception e) {
