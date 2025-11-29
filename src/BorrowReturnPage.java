@@ -364,6 +364,8 @@ public class BorrowReturnPage {
             this.fine = new javafx.beans.property.SimpleStringProperty(fine);
         }
 
+
+
         public int getId() { return id; }
         public javafx.beans.property.SimpleStringProperty titleProperty() { return title; }
         public javafx.beans.property.SimpleStringProperty borrowDateProperty() { return borrowDate; }

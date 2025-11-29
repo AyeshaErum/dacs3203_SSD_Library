@@ -1,6 +1,7 @@
 import java.sql.*;
 
 public class DBUtils {
+
     private static String url = "jdbc:mysql://localhost:3306/lab03";
     private static String appUsername = "root";
     private static String appPassword = "";

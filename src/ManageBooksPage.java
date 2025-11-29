@@ -148,7 +148,7 @@ public class ManageBooksPage {
         }
     }
 
-    // -------------------- ADD BOOK ----------------------
+    // -------------------- ADD BOOK ------------------------
     private void addBook(TextField title, TextField author, TextField category, TextField qty) {
         if (title.getText().isEmpty() || author.getText().isEmpty() || qty.getText().isEmpty()) {
             showAlert("Please fill required fields.");

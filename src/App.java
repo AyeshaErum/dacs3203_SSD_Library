@@ -8,12 +8,12 @@ public class App extends Application {
         UserLogin login = new UserLogin(primaryStage);
         login.initializeComponents();
     }
-
     public static void main(String[] args) {
         launch(args);
     }
-}
 
+
+}
 
 
 //saima saima123
